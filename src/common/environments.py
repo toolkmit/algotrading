@@ -30,8 +30,9 @@ class ESTradingEnv_v2(Env):
         
 
         """Initialisation function"""
-        self._five_min_data = pd.read_feather('../data/processed/ES_5mintrading.feather')
-        self._five_min_data = self._five_min_data[self._five_min_data['date']<'1-1-2018'] #Training Set
+        #self._five_min_data = pd.read_feather('../data/processed/ES_5mintrading.feather')
+        self._five_min_data = pd.read_hdf('../data/processed/store.h5', key='final_data')
+        self._five_min_data = self._five_min_data[self._five_min_data['date']<'7-1-2017'] #Training Set
         self._history_length = history_length
         self._episode_length = episode_length
         
@@ -46,7 +47,7 @@ class ESTradingEnv_v2(Env):
         # Next 5 features are ohlc and the value of the 20 day ema
         # Last 2 features are sin_time and cos_time
         self.observation_space = spaces.Box(low=-9999, high=9999, 
-                                            shape=(history_length,8), dtype=np.float32)
+                                            shape=(history_length,15), dtype=np.float32)
         
         self._first_render = True
         self._observation = self.reset()
@@ -70,7 +71,7 @@ class ESTradingEnv_v2(Env):
         
         #Randomly pick a day to start 
         self._start_index = random.choice(i[4:-math.ceil(self._episode_length/81)])
-        #self._start_index = i[3]
+        #self._start_index = i[4]
         
         observation = self._get_observation(index=self._start_index, 
                                             history_length=self._history_length,
@@ -112,7 +113,8 @@ class ESTradingEnv_v2(Env):
         df['ema'] = df['ema'] / df['close'].iloc[-1]
         '''
         
-        df = df.loc[:,['open','high','low','close','ema','sin_time','cos_time']]
+        df = df.loc[:,['open','high','low','close','ema','sin_time','cos_time','cdl_body','cdl_rng','cdl_ut','cdl_lt',
+                      'cdl_sign', 'cdl_hl', 'cdl_lh']]
         df.loc[:,'position'] = position
         
         return df.as_matrix()
@@ -180,8 +182,8 @@ class ESTradingEnv_v2(Env):
                 self._total_trades += 1
                 
             if not self._action == self._actions['hold']:
-                #reward -= 500
-                pass
+                reward -= 500
+                #pass
         
         #Calculate win rate -- hope this is right
         if pnl > 0:
@@ -267,7 +269,7 @@ class ESTradingEnv_v2(Env):
                      'Win Rate: ' + "%.2f" % self._win_rate + ' ~ ' +
                      'Position: ' + "%.0f" % self._position)
         
-        plt.pause(.2)      
+        plt.pause(.01)      
 
 
 class ESTradingEnv(Env):
