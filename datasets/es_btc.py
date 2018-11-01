@@ -18,6 +18,9 @@ class ESBTCDataset(Dataset):
         self.emb_size = 9
         self.step = 1
         self.forecast = 1
+        self.num_classes = 2
+        self.input_shape = (self.window_size, self.emb_size)
+        self.output_shape = (self.num_classes,)
         
     def load_or_generate_data(self):
         if not os.path.exists(PROCESSED_DATA_FILENAME):
@@ -27,6 +30,13 @@ class ESBTCDataset(Dataset):
             self.y_train = f['y_train'][:]
             self.x_test = f['x_test'][:]
             self.y_test = f['y_test'][:]
+            
+    def __repr__(self):
+        return (
+            'ESBTC Dataset\n'
+            f'Window size: {self.window_size}\n'
+            f'Num features: {self.emb_size}\n'
+            )
     
     def _download_and_process_esbtc(self):
         

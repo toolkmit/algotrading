@@ -2,8 +2,8 @@ from typing import Callable, Dict
 import pathlib
 
 import numpy as np
-from tensorflow.keras.models import Model as KerasModel
-from tensorflow.keras.optimizers import Adam
+from keras.models import Model as KerasModel
+from keras.optimizers import Adam
 
 from datasets.base import Dataset
 
@@ -36,9 +36,10 @@ class Model:
 
         self.network.fit(
             dataset.x_train,
-            dataset.y_train
+            dataset.y_train,
             epochs=epochs,
-            batch_size,
+            batch_size=batch_size,
+            verbose=2,
             callbacks=callbacks,
             validation_data=(dataset.x_test, dataset.y_test),
             shuffle=True

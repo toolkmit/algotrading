@@ -3,9 +3,9 @@ from typing import Tuple
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.layers import Conv1D, Dense, Dropout, Flatten, Input, Activation, LeakyReLU, BatchNormalization
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.models import Model as KerasModel
+from keras.layers import Conv1D, Dense, Dropout, Flatten, Input, Activation, LeakyReLU, BatchNormalization
+from keras.models import Sequential
+from keras.models import Model as KerasModel
 
 
 def cnn(
@@ -18,17 +18,17 @@ def cnn(
     
     model = Sequential()
     model.add(Conv1D(input_shape=input_shape,
-                            filters=32,
-                            kernel_size=2,
-                            padding='same',
-                            activation='relu'))
+                     filters=32,
+                     kernel_size=2,
+                     padding='same',
+                     activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(0.75))
 
     model.add(Conv1D(filters=64,
-                            kernel_size=4,
-                            padding='same',
-                            activation='relu'))
+                     kernel_size=4,
+                     padding='same',
+                     activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(0.75))
 
