@@ -31,8 +31,8 @@ class Model:
         DIRNAME.mkdir(parents=True, exist_ok=True)
         return str(DIRNAME / f'{self.name}_weights.h5')
 
-    def fit(self, dataset, batch_size=64, epochs=10, callbacks=[]):
-        self.network.compile(loss=self.loss(), optimizer=self.optimizer(), metrics=self.metrics())
+    def fit(self, dataset, batch_size=64, epochs=10, learning_rate=1e-3, callbacks=[]):
+        self.network.compile(loss=self.loss(), optimizer=self.optimizer(lr=learning_rate), metrics=self.metrics())
 
         self.network.fit(
             dataset.x_train,
@@ -52,8 +52,8 @@ class Model:
     def loss(self):
         return 'categorical_crossentropy'
 
-    def optimizer(self):
-        return Adam()
+    def optimizer(self, lr):
+        return Adam(lr=lr)
 
     def metrics(self):
         return ['accuracy']

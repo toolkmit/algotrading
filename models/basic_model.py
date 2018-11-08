@@ -38,4 +38,4 @@ class ESModel(Model):
         super().__init__(dataset_cls, network_fn, dataset_args, network_args)
         
     def metrics(self):
-        return ['accuracy', precision_threshold()]
+        return ['accuracy']

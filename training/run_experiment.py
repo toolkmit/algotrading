@@ -12,7 +12,8 @@ from training.util import train_model
 
 DEFAULT_TRAIN_ARGS = {
     'batch_size': 64,
-    'epochs': 100
+    'epochs': 100,
+    'learning_rate': 1e-3
 }
 
 
@@ -69,6 +70,7 @@ def run_experiment(experiment_config: Dict, save_weights: bool, gpu_ind: int, us
         dataset,
         epochs=experiment_config['train_args']['epochs'],
         batch_size=experiment_config['train_args']['batch_size'],
+        learning_rate=experiment_config['train_args']['learning_rate'],
         gpu_ind=gpu_ind,
         use_wandb=use_wandb
     )

@@ -1,0 +1,53 @@
+{
+    "experiment_group": "Sample Experiments",
+    "experiments": [
+        {
+            "dataset": "ESBTCDataset",
+            "model": "ESModel",
+            "network": "cnn",
+            "network_args": {
+                "filters": 32,
+                "kernel_size": 2,
+                "fc_layer_size": 32,
+                "dropout_pct": 0.75,
+                "batch_norm_on": true    
+            }
+        },
+        {
+            "dataset": "ESBTCDataset",
+            "model": "ESModel",
+            "network": "cnn",
+            "network_args": {
+                "filters": 32,
+                "kernel_size": 2,
+                "fc_layer_size": 32,
+                "dropout_pct": 0.75,
+                "batch_norm_on": false    
+            }
+        },
+        {
+            "dataset": "ESBTCDataset",
+            "model": "ESModel",
+            "network": "cnn",
+            "network_args": {
+                "filters": 64,
+                "kernel_size": 2,
+                "fc_layer_size": 32,
+                "dropout_pct": 0.75,
+                "batch_norm_on": true    
+            }
+        },
+        {
+            "dataset": "ESBTCDataset",
+            "model": "ESModel",
+            "network": "cnn",
+            "network_args": {
+                "filters": 32,
+                "kernel_size": 4,
+                "fc_layer_size": 32,
+                "dropout_pct": 0.75,
+                "batch_norm_on": true   
+            }
+        }
+    ]
+}

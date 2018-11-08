@@ -7,25 +7,59 @@ import numpy as np
 
 from datasets.base import Dataset
 
-PROCESSED_DATA_DIRNAME = Dataset.data_dirname() / 'processed' / 'es_btc'
-PROCESSED_DATA_FILENAME = PROCESSED_DATA_DIRNAME / 'btc.h5'
+RAW_DATA_PATH = Dataset.data_dirname() / 'processed' / 'store.h5'
+DATA_DIRNAME = Dataset.data_dirname() / 'processed' / 'es_btc'
+#PROCESSED_DATA_FILENAME = PROCESSED_DATA_DIRNAME / 'btc.h5'
 
 class ESBTCDataset(Dataset):
     """5 Emini S&P 500 Buy the Close"""
     
-    def __init__(self):
-        self.window_size = 36
-        self.emb_size = 9
+    def __init__(self, window_size: int=36, use_close: bool=True, use_cng: bool=False, use_time: bool=True, use_ema: bool=True,
+                use_ohl: bool=False, use_cdl: bool=False, use_dir: bool=False):
+        self.window_size = window_size
+        
+        self.use_close = use_close
+        self.use_cng = use_cng
+        self.use_time = use_time
+        self.use_ema = use_ema
+        self.use_ohl = use_ohl
+        self.use_cdl = use_cdl
+        self.use_dir = use_dir
+        
+        if self.use_close and self.use_cng:
+            e_size = 2
+        elif self.use_cng:
+            e_size = 1
+        else:
+            e_size = 1
+            self.use_close = True
+        
+        if self.use_time:
+            e_size += 2
+        if self.use_ema:
+            e_size += 1
+        if self.use_ohl:
+            e_size += 3
+        if self.use_cdl:
+            e_size += 5
+        if self.use_dir:
+            e_size += 2
+                 
+        self.emb_size = e_size
         self.step = 1
         self.forecast = 1
         self.num_classes = 2
         self.input_shape = (self.window_size, self.emb_size)
         self.output_shape = (self.num_classes,)
         
+    @property
+    def data_filename(self):
+        return DATA_DIRNAME / f'ws_{self.window_size}_close_{self.use_close}_cng_{self.use_cng}_t_{self.use_time}_ema_{self.use_ema}_ohl_{self.use_ohl}_cdl_{self.use_cdl}_dir_{self.use_dir}.h5'
+        
     def load_or_generate_data(self):
-        if not os.path.exists(PROCESSED_DATA_FILENAME):
+        if not os.path.exists(self.data_filename):
             self._download_and_process_esbtc()
-        with h5py.File(PROCESSED_DATA_FILENAME, 'r') as f:
+        with h5py.File(self.data_filename, 'r') as f:
             self.x_train = f['x_train'][:]
             self.y_train = f['y_train'][:]
             self.x_test = f['x_test'][:]
@@ -40,11 +74,11 @@ class ESBTCDataset(Dataset):
     
     def _download_and_process_esbtc(self):
         
-        PROCESSED_DATA_DIRNAME.mkdir(parents=True, exist_ok=True)
+        DATA_DIRNAME.mkdir(parents=True, exist_ok=True)
         
         # Load Pandas Dataframe and add columns
         print('Loading Trading Data...')
-        fd = pd.read_hdf('../data/processed/store.h5', key='cnn_data')
+        fd = pd.read_hdf(RAW_DATA_PATH, key='cnn_data')
         fd['change'] = fd['close'] - fd['close'].shift(1)
         fd['cdl_sign'] = np.sign(fd['close'] - fd['open'])
         fd['cdl_body'] = np.absolute(fd['close'] - fd['open'])
@@ -119,8 +153,26 @@ class ESBTCDataset(Dataset):
                     y_i = [1, 0]
                 else:
                     y_i = [0, 1]
+                    
+                if self.use_close and self.use_cng:
+                    args = (c, cng)
+                elif self.use_cng:
+                    args = (cng, )
+                else:
+                    args = (c, )
+                    
+                if self.use_time:
+                    args += (ct, st)
+                if self.use_ema:
+                    args += (e, )
+                if self.use_ohl:
+                    args += (o, h, l)
+                if self.use_cdl:
+                    args += (_cdl_sign, _cdl_body, _cdl_ut, _cdl_lt, _cdl_rng)
+                if self.use_dir:
+                    args += (_cdl_hl, _cdl_lh)
         
-                x_i = np.column_stack((o, h, l, c, e, ct, st, cng, _cdl_hl))
+                x_i = np.column_stack(args)
         
             except Exception as e:
                 break
@@ -139,11 +191,11 @@ class ESBTCDataset(Dataset):
         
         print('Saving to HDF5...')
         
-        with h5py.File(PROCESSED_DATA_FILENAME, 'w') as f:
-            f.create_dataset('x_train', data=x_train, dtype='u1', compression='lzf')
-            f.create_dataset('y_train', data=y_train, dtype='u1', compression='lzf')
-            f.create_dataset('x_test', data=x_test, dtype='u1', compression='lzf')
-            f.create_dataset('y_test', data=y_test, dtype='u1', compression='lzf')
+        with h5py.File(self.data_filename, 'w') as f:
+            f.create_dataset('x_train', data=x_train, dtype='f4', compression='lzf')
+            f.create_dataset('y_train', data=y_train, dtype='f4', compression='lzf')
+            f.create_dataset('x_test', data=x_test, dtype='f4', compression='lzf')
+            f.create_dataset('y_test', data=y_test, dtype='f4', compression='lzf')
             
         print('ES BTC data downloaded and processed')
         
