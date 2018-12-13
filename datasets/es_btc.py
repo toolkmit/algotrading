@@ -15,13 +15,15 @@ class ESBTCDataset(Dataset):
     """5 Emini S&P 500 Buy the Close"""
     
     def __init__(self, window_size: int=36, use_close: bool=True, use_cng: bool=False, use_time: bool=True, use_ema: bool=True,
-                use_ohl: bool=False, use_cdl: bool=False, use_dir: bool=False):
+                use_ohl: bool=False, use_cdl: bool=False, use_dir: bool=False, use_ema5: bool=False, use_ema3: bool=False):
         self.window_size = window_size
         
         self.use_close = use_close
         self.use_cng = use_cng
         self.use_time = use_time
         self.use_ema = use_ema
+        self.use_ema5 = use_ema5
+        self.use_ema3 = use_ema3
         self.use_ohl = use_ohl
         self.use_cdl = use_cdl
         self.use_dir = use_dir
@@ -41,9 +43,13 @@ class ESBTCDataset(Dataset):
         if self.use_ohl:
             e_size += 3
         if self.use_cdl:
-            e_size += 5
+            e_size += 4
         if self.use_dir:
             e_size += 2
+        if self.use_ema5:
+            e_size += 1
+        if self.use_ema3:
+            e_size += 1
                  
         self.emb_size = e_size
         self.step = 1
@@ -54,7 +60,7 @@ class ESBTCDataset(Dataset):
         
     @property
     def data_filename(self):
-        return DATA_DIRNAME / f'ws_{self.window_size}_close_{self.use_close}_cng_{self.use_cng}_t_{self.use_time}_ema_{self.use_ema}_ohl_{self.use_ohl}_cdl_{self.use_cdl}_dir_{self.use_dir}.h5'
+        return DATA_DIRNAME / f'ws_{self.window_size}_close_{self.use_close}_cng_{self.use_cng}_t_{self.use_time}_ema_{self.use_ema}_ohl_{self.use_ohl}_cdl_{self.use_cdl}_dir_{self.use_dir}_ema5_{self.use_ema5}_ema3_{self.use_ema3}.h5'
         
     def load_or_generate_data(self):
         if not os.path.exists(self.data_filename):
@@ -79,14 +85,20 @@ class ESBTCDataset(Dataset):
         # Load Pandas Dataframe and add columns
         print('Loading Trading Data...')
         fd = pd.read_hdf(RAW_DATA_PATH, key='cnn_data')
+        fd['ema_5'] = fd['close'].ewm(span=5, min_periods=5).mean()
+        fd['ema_3'] = fd['close'].ewm(span=3, min_periods=3).mean()
         fd['change'] = fd['close'] - fd['close'].shift(1)
-        fd['cdl_sign'] = np.sign(fd['close'] - fd['open'])
-        fd['cdl_body'] = np.absolute(fd['close'] - fd['open'])
-        fd['cdl_ut'] = np.where(fd['cdl_sign'] > 0, fd['high'] - fd['close'], fd['high'] - fd['open'])
-        fd['cdl_lt'] = np.where(fd['cdl_sign'] > 0, fd['open'] - fd['low'], fd['close'] - fd['low'])
-        fd['cdl_rng'] = fd['high'] - fd['low']
         fd['cdl_hl'] = np.where(fd['low'] >= fd['low'].shift(), 1, 0) #higher low
         fd['cdl_lh'] = np.where(fd['high'] <= fd['high'].shift(), 1, 0) #lower high
+        
+        fd['cdl_body'] = (fd['close'] - fd['open']) / fd['close'] * 100
+        fd['cdl_rng'] = fd['high'] - fd['low']
+        fd['cdl_ut'] = np.where(fd['cdl_body'] > 0, fd['high'] - fd['close'], fd['high'] - fd['open'])
+        fd['cdl_lt'] = np.where(fd['cdl_body'] > 0, fd['open'] - fd['low'], fd['close'] - fd['low'])
+        fd['cdl_ut'] = np.where(fd['cdl_rng'] == 0, 0, fd['cdl_ut'] / fd['cdl_rng'])
+        fd['cdl_lt'] = np.where(fd['cdl_rng'] == 0, 0, fd['cdl_lt'] / fd['cdl_rng'])
+        fd['cdl_rng'] = (fd['cdl_rng'] / fd['low']) * 100
+
         
         #Turn df columns into variables
         print('Processing Trading Data...')
@@ -101,13 +113,15 @@ class ESBTCDataset(Dataset):
         btc = data['btc'].tolist()
         stc = data['stc'].tolist()
         change = data['change'].tolist()
-        cdl_sign = data['cdl_sign'].tolist()
+        #cdl_sign = data['cdl_sign'].tolist()
         cdl_body = data['cdl_body'].tolist()
         cdl_ut = data['cdl_ut'].tolist()
         cdl_lt = data['cdl_lt'].tolist()
         cdl_rng = data['cdl_rng'].tolist()
         cdl_hl = data['cdl_hl'].tolist()
         cdl_lh = data['cdl_lh'].tolist()
+        ema5p = data['ema_5'].tolist()
+        ema3p = data['ema_3'].tolist()
         
         #Create stack of observations
         WINDOW = self.window_size #Number of bars in a trading day
@@ -123,12 +137,14 @@ class ESBTCDataset(Dataset):
                 l = lowp[i:i+WINDOW]
                 c = closep[i:i+WINDOW]
                 e = emap[i:i+WINDOW]
+                e5 = ema5p[i:i+WINDOW]
+                e3 = ema3p[i:i+WINDOW]
                 ct = cos_time[i:i+WINDOW]
                 st = sin_time[i:i+WINDOW]
         
                 cng = change[i:i+WINDOW]
         
-                _cdl_sign = cdl_sign[i:i+WINDOW]
+                #_cdl_sign = cdl_sign[i:i+WINDOW]
                 _cdl_body = cdl_body[i:i+WINDOW]
                 _cdl_ut = cdl_ut[i:i+WINDOW]
                 _cdl_lt = cdl_lt[i:i+WINDOW]
@@ -142,6 +158,8 @@ class ESBTCDataset(Dataset):
                 l = (np.array(l) - np.mean(l)) / np.std(l)
                 c = (np.array(c) - np.mean(c)) / np.std(c)
                 e = (np.array(e) - np.mean(e)) / np.std(e)
+                e5 = (np.array(e5) - np.mean(e5)) / np.std(e5)
+                e3 = (np.array(e3) - np.mean(e3)) / np.std(e3)
         
                 _cng = (np.array(cng) - np.mean(cng)) / np.std(cng)
 
@@ -165,10 +183,14 @@ class ESBTCDataset(Dataset):
                     args += (ct, st)
                 if self.use_ema:
                     args += (e, )
+                if self.use_ema5:
+                    args += (e5, )
+                if self.use_ema3:
+                    args += (e3, )
                 if self.use_ohl:
                     args += (o, h, l)
                 if self.use_cdl:
-                    args += (_cdl_sign, _cdl_body, _cdl_ut, _cdl_lt, _cdl_rng)
+                    args += (_cdl_body, _cdl_ut, _cdl_lt, _cdl_rng)
                 if self.use_dir:
                     args += (_cdl_hl, _cdl_lh)
         
@@ -178,9 +200,9 @@ class ESBTCDataset(Dataset):
                 break
 
             #only add if 1pt body and close on high
-            if (closep[i+WINDOW-1] == highp[i+WINDOW-1]) and (closep[i+WINDOW-1]-openp[i+WINDOW-1]>=1):
-                X.append(x_i)
-                Y.append(y_i)
+            #if (closep[i+WINDOW-1] == highp[i+WINDOW-1]) and (closep[i+WINDOW-1]-openp[i+WINDOW-1]>=1):
+            X.append(x_i)
+            Y.append(y_i)
                 
         p = int(len(X) * 0.9)
         X, Y = np.array(X), np.array(Y)
